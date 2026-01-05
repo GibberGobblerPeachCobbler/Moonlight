@@ -36,6 +36,8 @@
       border-radius: 12px;
       font-size: 1.1em;
       transition: 0.2s;
+      display: inline-block;
+      word-break: break-word;
     }
 
     a:hover {
@@ -61,21 +63,44 @@
 </div>
 
 <script>
-  // Fetch the game list JSON
+  // Fetch the game list JSON with better diagnostics and safer hrefs
   fetch('games.json')
-    .then(response => response.json())
+    .then(response => {
+      if (!response.ok) throw new Error('Failed to fetch games.json: ' + response.status);
+      return response.json();
+    })
     .then(games => {
+      console.log('Loaded games.json:', games);
       const container = document.getElementById('games-container');
-      games.forEach(game => {
+
+      if (!Array.isArray(games) || games.length === 0) {
+        container.textContent = 'No games found in games.json';
+        return;
+      }
+
+      games.forEach((game, idx) => {
+        console.log('Game[' + idx + ']:', game);
+        // Basic validation
+        if (!game || typeof game.folder !== 'string' || typeof game.name !== 'string') {
+          console.warn('Skipping invalid game entry at index', idx, game);
+          return;
+        }
+
         const a = document.createElement('a');
-        a.href = `moonlight/${game.folder}/`;
+        // Use a simple relative path so we don't accidentally duplicate repo name in the URL.
+        const safeFolder = encodeURIComponent(game.folder);
+        a.href = './' + safeFolder + '/';
         a.textContent = game.name;
+        a.setAttribute('data-folder', game.folder);
         container.appendChild(a);
       });
     })
-    .catch(err => console.error('Error loading games:', err));
+    .catch(err => {
+      console.error('Error loading games:', err);
+      const container = document.getElementById('games-container');
+      container.textContent = 'Error loading games — see console for details';
+    });
 </script>
-
 
   <footer>
     Credits given to original game creators.
